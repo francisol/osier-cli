@@ -2,11 +2,13 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use clap::*;
 use serde::{Serialize, Deserialize};
+use std::process::Command;
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct TaskInfo{
    pub name: String,
    pub priority:i32,
    pub core_num:i32,
+   pub username: Option<String>,
    pub base_dir:Option<String>,
 }
 
@@ -20,6 +22,9 @@ fn send_command(port:i32,data:Vec<u8>){
 }
 
 fn create(matches:&ArgMatches)->Vec<u8>{
+    let output= Command::new("whoami").output().unwrap();
+    let temp= String::from_utf8(output.stdout).unwrap();
+    let name= temp.trim();
     let mut base_dir=std::path::PathBuf::from(std::env::current_dir().unwrap());
     let bd= matches.value_of("base_dir").unwrap();
     base_dir.push(bd);
@@ -28,6 +33,7 @@ fn create(matches:&ArgMatches)->Vec<u8>{
     let data =  std::fs::read(&yaml_path).expect(&format!("cannot read {}",base_dir.display()));
     let mut info:TaskInfo = serde_yaml::from_slice(data.as_slice()).expect("read yaml file error");
     info.base_dir=Some(base_dir.to_str().unwrap().to_string());
+    info.username=Some(name.to_string());
     let mut result:Vec<u8> = Vec::new();
     result.extend("create".as_bytes());
     result.push(3);
